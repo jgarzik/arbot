@@ -1,0 +1,14 @@
+#!/usr/bin/python
+
+import pprint
+from ethchain import EthChain
+
+pp = pprint.PrettyPrinter(indent=4)
+
+def main():
+	chainEtc = EthChain()
+	stats = chainEtc.basic_stats()
+	pp.pprint(stats)
+
+if __name__ == '__main__':
+	main()
