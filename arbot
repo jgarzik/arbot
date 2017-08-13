@@ -3,7 +3,7 @@
 import pprint
 import json
 import argparse
-from decimal import Decimal
+from decimal import Decimal, ROUND_FLOOR
 from ethchain import EthChain
 from poloniex import Poloniex
 from nicehash import Nicehash
@@ -17,14 +17,12 @@ dbFn = 'db.json'
 authDbFn = 'auth.json'
 
 parser = argparse.ArgumentParser(prog='myprogram')
-parser.add_argument('-n', '--noquery', action='store_true', default=False,
+parser.add_argument('--cache', action='store_true', default=False,
 		    help='Use existing ' + dbFn + '.  Do not query remotes for data')
 args = parser.parse_args()
 
 authDb = None
-db = {
-	'cache': {}
-}
+db = {}
 
 # TODO: doesn't work for some reason
 class DecimalEncoder(json.JSONEncoder):
@@ -33,21 +31,27 @@ class DecimalEncoder(json.JSONEncoder):
             return float(o)
         return super(DecimalEncoder, self).default(o)
 
-def cacheData(key, value):
-	db['cache'][key] = value
+def getDb(key):
+	if key not in db:
+		return None
+
+	return db[key]
+
+def putDb(key, value):
+	db[key] = value
 
 def queryData():
 	chainEth = EthChain()
 	stats = chainEth.basic_stats()
-	cacheData('chain.ETH.stats', stats)
+	putDb('chain.ETH.stats', stats)
 
 	exchPolo = Poloniex()
 	ticker = exchPolo.ticker()
-	cacheData('ticker', ticker)
+	putDb('ticker', ticker)
 
 	nh = Nicehash()
 	balance = nh.balance(authDb)
-	cacheData('nh.balance', balance['result'])
+	putDb('nh.balance', balance['result'])
 
 	algoList = [ '20' ]
 	for algo in algoList:
@@ -57,23 +61,57 @@ def queryData():
 			myOrders = nh.myOrders(authDb, location, algo)
 
 			cacheKey = 'nh.markets.' + algo + '.' + location
-			cacheData(cacheKey, orders['result'])
+			putDb(cacheKey, orders['result'])
 
 			cacheKey = 'nh.markets.' + algo + '.' + location + '.my'
-			cacheData(cacheKey, myOrders['result'])
+			putDb(cacheKey, myOrders['result'])
 
 	poolNano = Nanopool()
 	balance = poolNano.balance(authDb['nanopool']['address'])
-	cacheData('nanopool.balance', balance)
+	putDb('nanopool.balance', balance)
 
 	es = Etherscan()
 	balance = es.balance(authDb['nanopool']['address'],
 			     authDb['etherscan']['apikey'])
-	cacheData('chain.ETH.balance', balance)
+	putDb('chain.ETH.balance', balance)
 
 	eb = Bittrex()
 	balances = eb.balances(authDb)
-	cacheData('bittrex.balances', balances)
+	putDb('bittrex.balances', balances)
+
+def calcChainStats():
+	ethstats = getDb('chain.ETH.stats')
+	blocks = ethstats['data']['blocks']
+
+	diffSum = Decimal(0)
+	blockTimeSum = Decimal(0)
+
+	for block in blocks:
+		blockTimeSum = blockTimeSum + Decimal(block['blockTime'])
+		diffSum = diffSum + Decimal(block['difficulty'])
+
+	nBlocks = Decimal(len(blocks))
+	blockTimeAvgDec = blockTimeSum / nBlocks
+	blockTimeAvg = blockTimeAvgDec.to_integral_exact(rounding=ROUND_FLOOR)
+	diffAvg = diffSum / nBlocks
+
+	nethashGH = diffAvg / blockTimeAvg / Decimal('1e9')
+
+	personalGH = Decimal(1)
+	secstoGH = nethashGH / personalGH * blockTimeAvg
+	daystoGH = secstoGH / Decimal(24 * 60 * 60)
+	etherPerDay = Decimal(5) / daystoGH
+
+	finalcalc = {
+		'blocksAvgd': nBlocks,
+		'blockTimeAvg': blockTimeAvg,
+		'difficulty': diffAvg,
+		'nethashGH': nethashGH,
+		'daystoGH': daystoGH,
+		'perDay': etherPerDay,
+	}
+
+	db['chain.ETH.calc'] = finalcalc
 
 def readConfig():
 	global authDb
@@ -92,18 +130,15 @@ def writeDb():
 def main():
 	readConfig()
 
-	if args.noquery:
+	if args.cache:
 		print("Reading cached data")
 		readDb()
-		cached = True
 	else:
 		print("Querying fresh data")
 		queryData()
-		cached = False
 
-	if not cached:
-		print("Storing queried data in cache")
-		writeDb()
+	calcChainStats()
+	writeDb()
 
 if __name__ == '__main__':
 	main()
