@@ -15,8 +15,9 @@ from bittrex import Bittrex
 
 pp = pprint.PrettyPrinter(indent=4)
 
+logFn = 'log.arbot'
 LOGFORMAT = "%(asctime)s %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=LOGFORMAT)
+logging.basicConfig(filename=logFn, level=logging.DEBUG, format=LOGFORMAT)
 
 dbFn = 'db.json'
 authDbFn = 'auth.json'
