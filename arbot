@@ -1,14 +1,46 @@
 #!/usr/bin/python
 
 import pprint
+import json
 from ethchain import EthChain
+from poloniex import Poloniex
 
 pp = pprint.PrettyPrinter(indent=4)
 
+db = {
+	'cache': {}
+}
+
+# TODO: doesn't work for some reason
+class DecimalEncoder(json.JSONEncoder):
+    def _iterencode(self, o, markers=None):
+        if isinstance(o, Decimal):
+            # wanted a simple yield str(o) in the next line,
+            # but that would mean a yield on the line with super(...),
+            # which wouldn't work (see my comment below), so...
+            return (str(o) for o in [o])
+        return super(DecimalEncoder, self)._iterencode(o, markers)
+
+def cacheData(key, value):
+	db['cache'][key] = value
+
+def queryData():
+	chainEth = EthChain()
+	stats = chainEth.basic_stats()
+	cacheData('chain.ETH.stats', stats)
+
+	exchPolo = Poloniex()
+	ticker = exchPolo.ticker()
+	cacheData('ticker', ticker)
+
+def writeDb():
+	with open('db.json', 'w') as outfile:
+		json.dump(db, outfile, indent=2, sort_keys=True, cls=DecimalEncoder)
+
 def main():
-	chainEtc = EthChain()
-	stats = chainEtc.basic_stats()
-	pp.pprint(stats)
+	queryData()
+	writeDb()
 
 if __name__ == '__main__':
 	main()
+
