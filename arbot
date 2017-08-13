@@ -3,7 +3,9 @@
 import pprint
 import json
 import argparse
-from decimal import Decimal, ROUND_FLOOR
+import logging
+import sys
+from decimal import Decimal, ROUND_FLOOR, getcontext
 from ethchain import EthChain
 from poloniex import Poloniex
 from nicehash import Nicehash
@@ -12,6 +14,7 @@ from etherscan import Etherscan
 from bittrex import Bittrex
 
 pp = pprint.PrettyPrinter(indent=4)
+logging.basicConfig(level=logging.DEBUG)
 
 dbFn = 'db.json'
 authDbFn = 'auth.json'
@@ -42,6 +45,23 @@ def getDb(key):
 def putDb(key, value):
 	db[key] = value
 
+def getPool(currency, geoloc):
+	for poolName in syscfg.pools:
+		pool = syscfg.pools[poolName]
+		for endpt in pool['endpoints']:
+			if ((endpt['currency'] == currency) and
+			    (endpt['geoloc'] == geoloc)):
+				retobj = {
+					'host': endpt['host'],
+					'port': endpt['port'],
+					'user': pool['user'],
+					'pass': pool['pass'],
+					'speed_limit': pool['speed_limit'],
+				}
+				return retobj
+
+	return None
+
 def queryData():
 	chainEth = EthChain()
 	stats = chainEth.basic_stats()
@@ -51,15 +71,17 @@ def queryData():
 	ticker = exchPolo.ticker()
 	putDb('ticker', ticker)
 
-	nh = Nicehash()
-	balance = nh.balance(authDb)
+	nh = Nicehash(authDb)
+	balance = nh.balance()
+	if not balance:
+		sys.exit("no NH balance")
 	putDb('nh.balance', balance['result'])
 
 	for algo in syscfg['nicehash']['algoList']:
 		for locationN in xrange(2):
 			location = str(locationN)
 			orders = nh.orders(algo, location)
-			myOrders = nh.myOrders(authDb, algo, location)
+			myOrders = nh.myOrders(algo, location)
 
 			cacheKey = 'nh.markets.' + algo + '.' + location
 			putDb(cacheKey, orders['result'])
@@ -128,7 +150,7 @@ def calcPrices():
 	prices['feeExch'] = (startBTC * Decimal(0.0025))
 	prices['feePool'] = (startBTC * Decimal(0.01))
 	prices['feeChain'] = Decimal(0.0001) + Decimal(0.0001)
-	prices['netBalance'] = (prices['startBalance'] - 
+	prices['netBalance'] = (prices['startBalance'] -
 				prices['feeNH'] -
 				prices['feeExch'] -
 				prices['feePool'] -
@@ -148,17 +170,104 @@ def calcPrices():
 
 	putDb('chain.BTCETH.prices', prices)
 
+def haveOpenOrders(algo, location):
+	cacheKey = 'nh.markets.' + algo + '.' + location + '.my'
+	orders = getDb(cacheKey)['orders']
+	return (len(orders) > 0)
+
+def orderCmp(a, b):
+	priceA = float(a['price'])
+	priceB = float(b['price'])
+	if (priceA != priceB):
+		if (priceA < priceB):
+			return 1	# reverse sort
+		return -1		# reverse sort
+
+	return a['workers'] - b['workers']
+
+def liveOrders(algo, location):
+	cacheKey = 'nh.markets.' + algo + '.' + location
+	orders = getDb(cacheKey)['orders']
+	live = []
+	for order in orders:
+		if ((order['alive']) and
+		    (order['type'] == 0) and
+		    (order['workers'] > 0)):
+			live.append(order)
+
+	live.sort(cmp=orderCmp)
+
+	return live
+
+def findBestPrice(algo, location):
+	orders = liveOrders(algo, location)
+	leastOrders = orders[-4:]
+	price = Decimal(leastOrders[0]['price'])
+
+	return price
+
+def adjustOrders(algo, location):
+	pass
+
+def createNewOrders(algo, location):
+	# Calculate best price
+	bestPrice = findBestPrice(algo, location)
+	key = 'bestPrice.' + algo + "." + location
+	putDb(key, bestPrice)
+
+	# Get previously calculated prices and bid boundaries
+	prices = getDb('chain.BTCETH.prices')
+	minReqPrice = prices['pct3']
+
+	# Test: is there a good price on the market?
+	if bestPrice > minReqPrice:
+		logging.info("Decision: no order; market price too high (" + str(bestPrice) + " > " + str(minReqPrice) + ")")
+		return
+
+	# Test: do we have enough balance?
+	balance = Decimal((getDb('nh.balance')['balance_confirmed']))
+	minBalanceReq = Decimal(syscfg['nicehash']['minOrderBalance'])
+	if balance < minBalanceReq:
+		logging.info("Decision: no order; balance too low (" + str(balance) + " < " + str(minBalanceReq) + ")")
+		return
+
+	newOrderSpend = Decimal(syscfg['nicehash']['minOrderBalance'])
+	if newOrderSpend > balance:
+		newOrderSpend = balance
+
+	logging.info("Decision: Bid " + str(bestPrice) + ", Spend " + str(newOrderSpend))
+
+	pool = getPool('ETH', Nicehash.toLocation(location))
+	if not pool:
+		sys.exit("Configuration error; pool lookup failed")
+
+	callopts = {
+		'location': location,
+		'algo': algo,
+		'amount': newOrderSpend,
+		'price': bestPrice,
+		'limit': pool['speed_limit'],
+		'pool_host': pool['host'],
+		'pool_port': pool['port'],
+		'pool_user': pool['user'],
+		'pool_pass': pool['pass'],
+	}
+
+	nh = Nicehash(authDb)
+	res = nh.createOrder(callopts)
+	if not res:
+		sys.exit("Nicehash error; order create failed")
+
+	logging.info("Order created successfully.")
+
 def makeOrders():
 	for algo in syscfg['nicehash']['algoList']:
 		for locationN in xrange(2):
-			pass
-
-	# if orders exist, adjust orders
-	#	- if we are greater than best bid, decrease price
-	#	- if we have no workers, increase to best bid price|pct3
-	#	- if order balance < 20% of preferred-spend, refill
-	# otherwise, create new order if price is right and balance is ok
-	pass
+			location = str(locationN)
+			if haveOpenOrders(algo, location):
+				adjustOrders(algo, location)
+			else:
+				createNewOrders(algo, location)
 
 def readConfig():
 	global authDb
@@ -182,10 +291,10 @@ def main():
 	readConfig()
 
 	if args.cache:
-		print("Reading cached data")
+		logging.info("Reading cached data")
 		readDb()
 	else:
-		print("Querying fresh data")
+		logging.info("Querying fresh data")
 		queryData()
 
 	calcChainStats()
