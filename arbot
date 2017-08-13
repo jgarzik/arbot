@@ -2,6 +2,7 @@
 
 import pprint
 import json
+import argparse
 from decimal import Decimal
 from ethchain import EthChain
 from poloniex import Poloniex
@@ -12,7 +13,14 @@ from bittrex import Bittrex
 
 pp = pprint.PrettyPrinter(indent=4)
 
+dbFn = 'db.json'
 authDbFn = 'auth.json'
+
+parser = argparse.ArgumentParser(prog='myprogram')
+parser.add_argument('-n', '--noquery', action='store_true', default=False,
+		    help='Use existing ' + dbFn + '.  Do not query remotes for data')
+args = parser.parse_args()
+
 authDb = None
 db = {
 	'cache': {}
@@ -72,14 +80,30 @@ def readConfig():
 	with open(authDbFn) as data_file:
 		authDb = json.load(data_file)
 
+def readDb():
+	global db
+	with open(dbFn) as data_file:
+		db = json.load(data_file)
+
 def writeDb():
-	with open('db.json', 'w') as outfile:
+	with open(dbFn, 'w') as outfile:
 		json.dump(db, outfile, indent=2, sort_keys=True, cls=DecimalEncoder)
 
 def main():
 	readConfig()
-	queryData()
-	writeDb()
+
+	if args.noquery:
+		print("Reading cached data")
+		readDb()
+		cached = True
+	else:
+		print("Querying fresh data")
+		queryData()
+		cached = False
+
+	if not cached:
+		print("Storing queried data in cache")
+		writeDb()
 
 if __name__ == '__main__':
 	main()
