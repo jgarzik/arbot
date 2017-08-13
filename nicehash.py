@@ -18,7 +18,7 @@ class Nicehash:
 		}
 		return jsonfetch(opts)
 
-	def orders(self, location, algo):
+	def orders(self, algo, location):
 		opts = {
 			'url': self.ApiUrl,
 			'params': {
@@ -29,7 +29,7 @@ class Nicehash:
 		}
 		return jsonfetch(opts)
 
-	def myOrders(self, authDb, location, algo):
+	def myOrders(self, authDb, algo, location):
 		opts = {
 			'url': self.ApiUrl,
 			'params': {

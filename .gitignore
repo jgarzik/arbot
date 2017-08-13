@@ -1,6 +1,7 @@
 
-db.json
 auth.json
+config.json
+db.json
 
 *.pyc
 

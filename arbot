@@ -15,12 +15,14 @@ pp = pprint.PrettyPrinter(indent=4)
 
 dbFn = 'db.json'
 authDbFn = 'auth.json'
+configFn = 'config.json'
 
 parser = argparse.ArgumentParser(prog='myprogram')
 parser.add_argument('--cache', action='store_true', default=False,
 		    help='Use existing ' + dbFn + '.  Do not query remotes for data')
 args = parser.parse_args()
 
+syscfg = None
 authDb = None
 db = {}
 
@@ -53,12 +55,11 @@ def queryData():
 	balance = nh.balance(authDb)
 	putDb('nh.balance', balance['result'])
 
-	algoList = [ '20' ]
-	for algo in algoList:
+	for algo in syscfg['nicehash']['algoList']:
 		for locationN in xrange(2):
 			location = str(locationN)
-			orders = nh.orders(location, algo)
-			myOrders = nh.myOrders(authDb, location, algo)
+			orders = nh.orders(algo, location)
+			myOrders = nh.myOrders(authDb, algo, location)
 
 			cacheKey = 'nh.markets.' + algo + '.' + location
 			putDb(cacheKey, orders['result'])
@@ -147,10 +148,26 @@ def calcPrices():
 
 	putDb('chain.BTCETH.prices', prices)
 
+def makeOrders():
+	for algo in syscfg['nicehash']['algoList']:
+		for locationN in xrange(2):
+			pass
+
+	# if orders exist, adjust orders
+	#	- if we are greater than best bid, decrease price
+	#	- if we have no workers, increase to best bid price|pct3
+	#	- if order balance < 20% of preferred-spend, refill
+	# otherwise, create new order if price is right and balance is ok
+	pass
+
 def readConfig():
 	global authDb
 	with open(authDbFn) as data_file:
 		authDb = json.load(data_file)
+
+	global syscfg
+	with open(configFn) as data_file:
+		syscfg = json.load(data_file)
 
 def readDb():
 	global db
@@ -173,6 +190,7 @@ def main():
 
 	calcChainStats()
 	calcPrices()
+	makeOrders()
 	writeDb()
 
 if __name__ == '__main__':
