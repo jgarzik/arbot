@@ -14,7 +14,9 @@ from etherscan import Etherscan
 from bittrex import Bittrex
 
 pp = pprint.PrettyPrinter(indent=4)
-logging.basicConfig(level=logging.DEBUG)
+
+LOGFORMAT = "%(asctime)s %(message)s"
+logging.basicConfig(level=logging.DEBUG, format=LOGFORMAT)
 
 dbFn = 'db.json'
 authDbFn = 'auth.json'
