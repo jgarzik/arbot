@@ -23,6 +23,8 @@ configFn = 'config.json'
 parser = argparse.ArgumentParser(prog='myprogram')
 parser.add_argument('--cache', action='store_true', default=False,
 		    help='Use existing ' + dbFn + '.  Do not query remotes for data')
+parser.add_argument('--dryrun', action='store_true', default=False,
+		    help='Do not actually create/update orders')
 args = parser.parse_args()
  
 getcontext().prec = 18
@@ -52,8 +54,9 @@ def putDb(key, value):
 	db[key] = value
 
 def getPool(currency, geoloc):
-	for poolName in syscfg.pools:
-		pool = syscfg.pools[poolName]
+	pools = syscfg['pools']
+	for poolName in pools:
+		pool = syscfg['pools'][poolName]
 		for endpt in pool['endpoints']:
 			if ((endpt['currency'] == currency) and
 			    (endpt['geoloc'] == geoloc)):
@@ -224,6 +227,10 @@ def adjustOrders(algo, location):
 	# are we paying too much?  reduce price.
 	if bestPrice < Decimal(order['price']):
 		logging.info("Decision: paying too much; attempt to decrease price")
+		if args.dryrun:
+			logging.info("NOT dec'ing order - dryrun")
+			return
+
 		res = nh.orderPriceDec(algo, location, order['id'], bestPrice)
 		if res:
 			logging.info("Order dec'd successfully", extra=res)
@@ -233,6 +240,10 @@ def adjustOrders(algo, location):
 	# are we out of workers?  increase order price to best price w/ workers
 	elif order['workers'] == 0:
 		logging.info("Decision: out of workers; increase to price " + str(bestPrice))
+		if args.dryrun:
+			logging.info("NOT inc'ing order - dryrun")
+			return
+
 		res = nh.orderPriceInc(algo, location, order['id'], bestPrice)
 		if res:
 			logging.info("Order inc'd successfully", extra=res)
@@ -271,7 +282,7 @@ def createNewOrders(algo, location):
 
 	logging.info("Decision: Bid " + decimalstr(bestPrice) + ", Spend " + decimalstr(newOrderSpend))
 
-	pool = getPool('ETH', Nicehash.toLocation(location))
+	pool = getPool('ETH', Nicehash.toLocation[location])
 	if not pool:
 		sys.exit("Configuration error; pool lookup failed")
 
@@ -286,6 +297,10 @@ def createNewOrders(algo, location):
 		'pool_user': pool['user'],
 		'pool_pass': pool['pass'],
 	}
+
+	if args.dryrun:
+		logging.info("NOT creating order - dryrun", extra=callopts)
+		return
 
 	nh = Nicehash(authDb)
 	res = nh.createOrder(callopts)
