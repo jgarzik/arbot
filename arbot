@@ -4,9 +4,14 @@ import pprint
 import json
 from ethchain import EthChain
 from poloniex import Poloniex
+from nicehash import Nicehash
+from nanopool import Nanopool
+from etherscan import Etherscan
 
 pp = pprint.PrettyPrinter(indent=4)
 
+authDbFn = 'auth.json'
+authDb = None
 db = {
 	'cache': {}
 }
@@ -33,11 +38,43 @@ def queryData():
 	ticker = exchPolo.ticker()
 	cacheData('ticker', ticker)
 
+	nh = Nicehash()
+	balance = nh.balance(authDb)
+	cacheData('nh.balance', balance['result'])
+
+	algoList = [ '20' ]
+	for algo in algoList:
+		for locationN in xrange(2):
+			location = str(locationN)
+			orders = nh.orders(location, algo)
+			myOrders = nh.myOrders(authDb, location, algo)
+
+			cacheKey = 'nh.markets.' + algo + '.' + location
+			cacheData(cacheKey, orders['result'])
+
+			cacheKey = 'nh.markets.' + algo + '.' + location + '.my'
+			cacheData(cacheKey, myOrders['result'])
+
+	poolNano = Nanopool()
+	balance = poolNano.balance(authDb['nanopool']['address'])
+	cacheData('nanopool.balance', balance)
+
+	es = Etherscan()
+	balance = es.balance(authDb['nanopool']['address'],
+			     authDb['etherscan']['apikey'])
+	cacheData('chain.ETH.balance', balance)
+
+def readConfig():
+	global authDb
+	with open(authDbFn) as data_file:
+		authDb = json.load(data_file)
+
 def writeDb():
 	with open('db.json', 'w') as outfile:
 		json.dump(db, outfile, indent=2, sort_keys=True, cls=DecimalEncoder)
 
 def main():
+	readConfig()
 	queryData()
 	writeDb()
 

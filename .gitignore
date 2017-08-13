@@ -1,5 +1,6 @@
 
 db.json
+auth.json
 
 *.pyc
 

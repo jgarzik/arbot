@@ -13,7 +13,7 @@ def jsonfetch(opts):
 			 params=opts['params'], timeout=10)
 	if r.status_code != 200:
 		return None
-	
+
 	try:
 		# jval = json.loads(r.text, parse_float=decimal.Decimal)
 		jval = json.loads(r.text)
