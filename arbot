@@ -278,7 +278,7 @@ def createNewOrders(algo, location):
 		logging.info("Decision: no order; balance too low (" + decimalstr(balance) + " < " + decimalstr(minBalanceReq) + ")")
 		return
 
-	newOrderSpend = Decimal(syscfg['nicehash']['minOrderBalance'])
+	newOrderSpend = Decimal(syscfg['nicehash']['newOrderSpend'])
 	if newOrderSpend > balance:
 		newOrderSpend = balance
 
@@ -309,7 +309,7 @@ def createNewOrders(algo, location):
 	if not res:
 		sys.exit("Nicehash error; order create failed")
 
-	logging.info("Order created successfully.")
+	logging.info("Order created successfully.", extra=res)
 
 def makeOrders():
 	for algo in syscfg['nicehash']['algoList']:
