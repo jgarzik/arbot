@@ -58,3 +58,27 @@ class Nicehash:
 		}
 		return jsonfetch(opts)
 
+	def orderPriceDec(self, algo, location, orderId, bestPrice):
+		callopts = {
+			'method': 'orders.set.price.decrease',
+			'id': self.id,
+			'key': self.key,
+			'location': location,
+			'algo': algo,
+			'order': orderId,
+			# sadly, NH does not take price as input param
+		}
+		return jsonfetch(opts)
+
+	def orderPriceInc(self, algo, location, orderId, bestPrice):
+		callopts = {
+			'method': 'orders.set.price',
+			'id': self.id,
+			'key': self.key,
+			'location': location,
+			'algo': algo,
+			'order': orderId,
+			'price': bestPrice,
+		}
+		return jsonfetch(opts)
+
