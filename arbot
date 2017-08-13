@@ -111,7 +111,41 @@ def calcChainStats():
 		'perDay': etherPerDay,
 	}
 
-	db['chain.ETH.calc'] = finalcalc
+	putDb('chain.ETH.calc', finalcalc)
+
+def calcPrices():
+	ticker = getDb('ticker')
+	finalcalc = getDb('chain.ETH.calc')
+
+	prices = {}
+	prices['priceBTCETH'] = Decimal(ticker['BTC_ETH']['last'])
+	prices['mktBTCGH'] = finalcalc['perDay'] * prices['priceBTCETH']
+
+	startBTC = Decimal('1.0')
+	prices['startBalance'] = startBTC
+	prices['feeNH'] = (startBTC * Decimal(0.03)) + Decimal(0.0001)
+	prices['feeExch'] = (startBTC * Decimal(0.0025))
+	prices['feePool'] = (startBTC * Decimal(0.01))
+	prices['feeChain'] = Decimal(0.0001) + Decimal(0.0001)
+	prices['netBalance'] = (prices['startBalance'] - 
+				prices['feeNH'] -
+				prices['feeExch'] -
+				prices['feePool'] -
+				prices['feeChain'])
+
+	prices['goalBTC'] = prices['startBalance']
+	prices['goalETH'] = prices['goalBTC'] / prices['priceBTCETH']
+	prices['goalGHD'] = prices['goalETH'] / finalcalc['perDay']
+	prices['breakEven'] = prices['netBalance'] / prices['goalGHD']
+
+	prices['pct1'] = prices['breakEven'] * Decimal('0.99')
+	prices['pct2'] = prices['breakEven'] * Decimal('0.98')
+	prices['pct3'] = prices['breakEven'] * Decimal('0.97')
+	prices['pct4'] = prices['breakEven'] * Decimal('0.96')
+	prices['pct5'] = prices['breakEven'] * Decimal('0.95')
+	prices['pct10'] = prices['breakEven'] * Decimal('0.90')
+
+	putDb('chain.BTCETH.prices', prices)
 
 def readConfig():
 	global authDb
@@ -138,6 +172,7 @@ def main():
 		queryData()
 
 	calcChainStats()
+	calcPrices()
 	writeDb()
 
 if __name__ == '__main__':
