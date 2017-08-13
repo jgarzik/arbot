@@ -7,6 +7,7 @@ from poloniex import Poloniex
 from nicehash import Nicehash
 from nanopool import Nanopool
 from etherscan import Etherscan
+from bittrex import Bittrex
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -63,6 +64,10 @@ def queryData():
 	balance = es.balance(authDb['nanopool']['address'],
 			     authDb['etherscan']['apikey'])
 	cacheData('chain.ETH.balance', balance)
+
+	eb = Bittrex()
+	balances = eb.balances(authDb)
+	cacheData('bittrex.balances', balances)
 
 def readConfig():
 	global authDb
