@@ -2,6 +2,7 @@
 
 import pprint
 import json
+from decimal import Decimal
 from ethchain import EthChain
 from poloniex import Poloniex
 from nicehash import Nicehash
@@ -19,13 +20,10 @@ db = {
 
 # TODO: doesn't work for some reason
 class DecimalEncoder(json.JSONEncoder):
-    def _iterencode(self, o, markers=None):
+    def default(self, o):
         if isinstance(o, Decimal):
-            # wanted a simple yield str(o) in the next line,
-            # but that would mean a yield on the line with super(...),
-            # which wouldn't work (see my comment below), so...
-            return (str(o) for o in [o])
-        return super(DecimalEncoder, self)._iterencode(o, markers)
+            return float(o)
+        return super(DecimalEncoder, self).default(o)
 
 def cacheData(key, value):
 	db['cache'][key] = value

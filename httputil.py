@@ -15,8 +15,8 @@ def jsonfetch(opts):
 		return None
 
 	try:
-		# jval = json.loads(r.text, parse_float=decimal.Decimal)
-		jval = json.loads(r.text)
+		jval = json.loads(r.text, parse_float=decimal.Decimal)
+		# jval = json.loads(r.text)
 	except ValueError:
 		return None
 

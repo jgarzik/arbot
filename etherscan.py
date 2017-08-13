@@ -1,4 +1,5 @@
 
+from decimal import Decimal
 from httputil import jsonfetch
 
 class Etherscan:
@@ -19,7 +20,11 @@ class Etherscan:
 			}
 		}
 		jval = jsonfetch(opts)
-		wei = float(jval['result'])
-		ethBalance = wei / 1000000000000000000
-		return ethBalance
+		wei = Decimal(jval['result'])
+		ethBalance = wei / Decimal('1000000000000000000')
+		retobj = {
+			'ether': ethBalance,
+			'wei': jval['result'],
+		}
+		return retobj
 
