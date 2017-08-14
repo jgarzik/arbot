@@ -29,7 +29,7 @@ parser.add_argument('--cache', action='store_true', default=False,
 parser.add_argument('--dryrun', action='store_true', default=False,
 		    help='Do not actually create/update orders')
 args = parser.parse_args()
- 
+
 getcontext().prec = 18
 
 syscfg = None
@@ -225,8 +225,11 @@ def adjustOrders(algo, location):
 	curPrice = Decimal(order['price'])
 	bestPriceWithWorkers = findBestPrice(algo, location)
 	prices = getDb('chain.BTCETH.prices')
+	goalPrice = prices['pct3']
 
-	price = min(bestPriceWithWorkers, prices['pct3'])
+	logging.info("Current " + decimalstr(curPrice) + ", Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
+
+	price = min(bestPriceWithWorkers, goalPrice)
 
 	mktPrefix = 'mkt' + algo + '.' + location + ':'
 
@@ -234,15 +237,16 @@ def adjustOrders(algo, location):
 	nh = Nicehash(authDb)
 
 	# are we paying too much?  reduce price.
-	if bestPrice < curPrice:
+	if bestPriceWithWorkers < curPrice:
 		logging.info(mktPrefix + "Decision: paying too much; attempt to decrease price")
 		if args.dryrun:
 			logging.info("NOT dec'ing order - dryrun")
 			return
 
-		res = nh.orderPriceDec(algo, location, order['id'], bestPrice)
+		res = nh.orderPriceDec(algo, location, order['id'], bestPriceWithWorkers)
 		if res:
-			logging.info("Order dec'd successfully", extra=res)
+			resStr = json.dumps(res, cls=DecimalEncoder)
+			logging.info("Order dec'd successfully: " + resStr)
 		else:
 			logging.info("Order dec failed")
 
@@ -255,14 +259,14 @@ def adjustOrders(algo, location):
 
 		res = nh.orderPriceInc(algo, location, order['id'], price)
 		if res:
-			logging.info("Order inc'd successfully", extra=res)
+			resStr = json.dumps(res, cls=DecimalEncoder)
+			logging.info("Order inc'd successfully: " + resStr)
 		else:
 			logging.info("Order inc failed")
 
 	# leave order as-is
 	else:
-		d = { 'curPrice': curPrice, 'bestPrice': bestPriceWithWorkers }
-		logging.info(mktPrefix + "Decision: no adjustment action", extra=d)
+		logging.info(mktPrefix + "Decision: no adjustment action")
 
 def createNewOrders(algo, location):
 	# Calculate best price
@@ -275,6 +279,8 @@ def createNewOrders(algo, location):
 	# Get previously calculated prices and bid boundaries
 	prices = getDb('chain.BTCETH.prices')
 	minReqPrice = prices['pct4']
+
+	logging.info("Goal " + decimalstr(minReqPrice) + ", BWW " + str(bestPrice))
 
 	# Test: is there a good price on the market?
 	if bestPrice > minReqPrice:
@@ -311,7 +317,8 @@ def createNewOrders(algo, location):
 	}
 
 	if args.dryrun:
-		logging.info("NOT creating order - dryrun", extra=callopts)
+		callStr = json.dumps(callopts, cls=DecimalEncoder)
+		logging.info("NOT creating order - dryrun: " + callStr)
 		return
 
 	nh = Nicehash(authDb)
@@ -319,7 +326,8 @@ def createNewOrders(algo, location):
 	if not res:
 		sys.exit("Nicehash error; order create failed")
 
-	logging.info("Order created successfully.", extra=res)
+	resStr = json.dumps(res, cls=DecimalEncoder)
+	logging.info("Order created successfully: " + resStr)
 
 def makeOrders():
 	for algo in syscfg['nicehash']['algoList']:
