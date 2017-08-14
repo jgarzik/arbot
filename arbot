@@ -2,7 +2,8 @@
 
 #
 # To-do...
-# - refill orders that are running low
+# - truncate order price to 4 decimal places
+# - refill orders that are running low(?) - maybe natural refill
 #
 #
 
