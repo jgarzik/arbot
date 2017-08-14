@@ -1,5 +1,21 @@
 
+from time import sleep
 from httputil import jsonfetch
+import logging
+import json
+
+def nhfetch(opts):
+	sleep(2)	# API rate limit is "approx 2s"
+	return jsonfetch(opts)
+
+def nhfetchCheck(opts):
+	ret = nhfetch(opts)
+	result = ret['result']
+	if 'success' in result:
+		return result
+
+	logging.info("API call failed at url " + opts['url'] + " -- " + json.dumps(result))
+	return None
 
 class Nicehash:
 	ApiUrl = 'https://api.nicehash.com/api'
@@ -21,7 +37,7 @@ class Nicehash:
 				'key': self.key,
 			}
 		}
-		return jsonfetch(opts)
+		return nhfetch(opts)
 
 	def orders(self, algo, location):
 		opts = {
@@ -32,7 +48,7 @@ class Nicehash:
 				'algo': algo,
 			}
 		}
-		return jsonfetch(opts)
+		return nhfetch(opts)
 
 	def myOrders(self, algo, location):
 		opts = {
@@ -46,7 +62,7 @@ class Nicehash:
 				'key': self.key,
 			}
 		}
-		return jsonfetch(opts)
+		return nhfetch(opts)
 
 	def createOrder(self, params):
 		params['method'] = 'orders.create'
@@ -56,7 +72,7 @@ class Nicehash:
 			'url': self.ApiUrl,
 			'params': params,
 		}
-		return jsonfetch(opts)
+		return nhfetch(opts)
 
 	def orderPriceDec(self, algo, location, orderId, bestPrice):
 		params = {
@@ -72,7 +88,7 @@ class Nicehash:
 			'url': self.ApiUrl,
 			'params': params,
 		}
-		return jsonfetch(opts)
+		return nhfetchCheck(opts)
 
 	def orderPriceInc(self, algo, location, orderId, bestPrice):
 		params = {
@@ -88,5 +104,5 @@ class Nicehash:
 			'url': self.ApiUrl,
 			'params': params,
 		}
-		return jsonfetch(opts)
+		return nhfetchCheck(opts)
 
