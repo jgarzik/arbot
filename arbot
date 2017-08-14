@@ -224,12 +224,14 @@ def adjustOrders(algo, location):
 	order = myOrders[0]
 	bestPrice = findBestPrice(algo, location)
 
+	mktPrefix = 'mkt' + algo + '.' + location + ':'
+
 	res = None
 	nh = Nicehash(authDb)
 
 	# are we paying too much?  reduce price.
 	if bestPrice < Decimal(order['price']):
-		logging.info("Decision: paying too much; attempt to decrease price")
+		logging.info(mktPrefix + "Decision: paying too much; attempt to decrease price")
 		if args.dryrun:
 			logging.info("NOT dec'ing order - dryrun")
 			return
@@ -242,7 +244,7 @@ def adjustOrders(algo, location):
 
 	# are we out of workers?  increase order price to best price w/ workers
 	elif order['workers'] == 0:
-		logging.info("Decision: out of workers; increase to price " + str(bestPrice))
+		logging.info(mktPrefix + "Decision: out of workers; increase to price " + str(bestPrice))
 		if args.dryrun:
 			logging.info("NOT inc'ing order - dryrun")
 			return
@@ -255,7 +257,7 @@ def adjustOrders(algo, location):
 
 	# leave order as-is
 	else:
-		logging.info("Decision: no adjustment action")
+		logging.info(mktPrefix + "Decision: no adjustment action")
 
 def createNewOrders(algo, location):
 	# Calculate best price
@@ -263,27 +265,29 @@ def createNewOrders(algo, location):
 	key = 'bestPrice.' + algo + "." + location
 	putDb(key, bestPrice)
 
+	mktPrefix = 'mkt' + algo + '.' + location + ':'
+
 	# Get previously calculated prices and bid boundaries
 	prices = getDb('chain.BTCETH.prices')
 	minReqPrice = prices['pct3']
 
 	# Test: is there a good price on the market?
 	if bestPrice > minReqPrice:
-		logging.info("Decision: no order; market price too high (" + str(bestPrice) + " > " + str(minReqPrice) + ")")
+		logging.info(mktPrefix + "Decision: no order; market price too high (" + str(bestPrice) + " > " + str(minReqPrice) + ")")
 		return
 
 	# Test: do we have enough balance?
 	balance = Decimal((getDb('nh.balance')['balance_confirmed']))
 	minBalanceReq = Decimal(syscfg['nicehash']['minOrderBalance'])
 	if balance < minBalanceReq:
-		logging.info("Decision: no order; balance too low (" + decimalstr(balance) + " < " + decimalstr(minBalanceReq) + ")")
+		logging.info(mktPrefix + "Decision: no order; balance too low (" + decimalstr(balance) + " < " + decimalstr(minBalanceReq) + ")")
 		return
 
 	newOrderSpend = Decimal(syscfg['nicehash']['newOrderSpend'])
 	if newOrderSpend > balance:
 		newOrderSpend = balance
 
-	logging.info("Decision: Bid " + decimalstr(bestPrice) + ", Spend " + decimalstr(newOrderSpend))
+	logging.info(mktPrefix + "Decision: Bid " + decimalstr(bestPrice) + ", Spend " + decimalstr(newOrderSpend))
 
 	pool = getPool('ETH', Nicehash.toLocation[location])
 	if not pool:
