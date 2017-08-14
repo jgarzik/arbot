@@ -222,7 +222,11 @@ def adjustOrders(algo, location):
 	cacheKey = 'nh.markets.' + algo + '.' + location + '.my'
 	myOrders = getDb(cacheKey)['orders']
 	order = myOrders[0]
-	bestPrice = findBestPrice(algo, location)
+	curPrice = Decimal(order['price'])
+	bestPriceWithWorkers = findBestPrice(algo, location)
+	prices = getDb('chain.BTCETH.prices')
+
+	price = min(bestPriceWithWorkers, prices['pct3'])
 
 	mktPrefix = 'mkt' + algo + '.' + location + ':'
 
@@ -230,7 +234,7 @@ def adjustOrders(algo, location):
 	nh = Nicehash(authDb)
 
 	# are we paying too much?  reduce price.
-	if bestPrice < Decimal(order['price']):
+	if bestPrice < curPrice:
 		logging.info(mktPrefix + "Decision: paying too much; attempt to decrease price")
 		if args.dryrun:
 			logging.info("NOT dec'ing order - dryrun")
@@ -242,14 +246,14 @@ def adjustOrders(algo, location):
 		else:
 			logging.info("Order dec failed")
 
-	# are we out of workers?  increase order price to best price w/ workers
-	elif order['workers'] == 0:
-		logging.info(mktPrefix + "Decision: out of workers; increase to price " + str(bestPrice))
+	# are we out of workers?  increase order price
+	elif ((order['workers'] == 0) and (price > curPrice)):
+		logging.info(mktPrefix + "Decision: out of workers; increase to price " + str(price))
 		if args.dryrun:
 			logging.info("NOT inc'ing order - dryrun")
 			return
 
-		res = nh.orderPriceInc(algo, location, order['id'], bestPrice)
+		res = nh.orderPriceInc(algo, location, order['id'], price)
 		if res:
 			logging.info("Order inc'd successfully", extra=res)
 		else:
@@ -257,7 +261,8 @@ def adjustOrders(algo, location):
 
 	# leave order as-is
 	else:
-		logging.info(mktPrefix + "Decision: no adjustment action")
+		d = { 'curPrice': curPrice, 'bestPrice': bestPriceWithWorkers }
+		logging.info(mktPrefix + "Decision: no adjustment action", extra=d)
 
 def createNewOrders(algo, location):
 	# Calculate best price
@@ -269,7 +274,7 @@ def createNewOrders(algo, location):
 
 	# Get previously calculated prices and bid boundaries
 	prices = getDb('chain.BTCETH.prices')
-	minReqPrice = prices['pct3']
+	minReqPrice = prices['pct4']
 
 	# Test: is there a good price on the market?
 	if bestPrice > minReqPrice:
