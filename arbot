@@ -54,6 +54,12 @@ def decimalstr(d):
 	s = '{0:f}'.format(d)
 	return s
 
+def decimaltrunc(d, n):
+	s = decimalstr(d)
+	before_dec, after_dec = s.split('.')
+	truncStr = '.'.join((before_dec, after_dec[0:n]))
+	return Decimal(truncStr)
+
 def getDb(key):
 	if key not in db:
 		return None
@@ -236,7 +242,7 @@ def adjustOrders(algo, location):
 
 	logging.info("Current " + decimalstr(curPrice) + ", Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
 
-	price = min(bestPriceWithWorkers, goalPrice)
+	price = min(bestPriceWithWorkers, decimaltrunc(goalPrice, 4))
 
 	mktPrefix = 'mkt' + algo + '.' + location + ':'
 
@@ -285,7 +291,7 @@ def createNewOrders(algo, location):
 
 	# Get previously calculated prices and bid boundaries
 	prices = getDb('chain.BTCETH.prices')
-	minReqPrice = prices['pct4']
+	minReqPrice = decimaltrunc(prices['pct4'], 4)
 
 	logging.info("Goal " + decimalstr(minReqPrice) + ", BWW " + str(bestPrice))
 
