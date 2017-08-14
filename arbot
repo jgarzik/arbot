@@ -225,7 +225,7 @@ def adjustOrders(algo, location):
 	curPrice = Decimal(order['price'])
 	bestPriceWithWorkers = findBestPrice(algo, location)
 	prices = getDb('chain.BTCETH.prices')
-	goalPrice = prices['pct3']
+	goalPrice = prices['pct4']
 
 	logging.info("Current " + decimalstr(curPrice) + ", Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
 
