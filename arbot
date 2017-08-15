@@ -43,7 +43,6 @@ syscfg = None
 authDb = None
 db = {}
 
-# TODO: doesn't work for some reason
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
