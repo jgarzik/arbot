@@ -8,22 +8,29 @@ from httputil import jsonfetch
 class Bittrex:
 	ApiBaseUrl = 'https://bittrex.com/api'
 
-	def __init__(self):
-		pass
+	def __init__(self, authDb):
+		self.apikey = authDb['bittrex']['key']
+		self.secret = authDb['bittrex']['secret']
 
-	def balances(self, authDb):
-		apikey = authDb['bittrex']['key']
-		secret = authDb['bittrex']['secret']
+	def fetchPub(self, callUrl, qsParams):
+		qs = urllib.urlencode(qsParams)
+		url = self.ApiBaseUrl + callUrl + '?' + qs
 
-		callparams = {
-			'apikey': apikey,
-			'nonce': int(time.time()),
+		opts = {
+			'url': url,
 		}
-		qs = urllib.urlencode(callparams)
-		callUrl = '/v1.1/account/getbalances?'
-		url = self.ApiBaseUrl + callUrl + qs
+		jval = jsonfetch(opts)
+		return jval['result']
 
-		mac = hmac.new(str(secret), str(url), digestmod=hashlib.sha512)
+	def fetchPriv(self, callUrl, qsParams):
+		qsParams['apikey'] = self.apikey
+		qsParams['nonce'] = int(time.time())
+
+		qs = urllib.urlencode(qsParams)
+		url = self.ApiBaseUrl + callUrl + '?' + qs
+
+		mac = hmac.new(str(self.secret), str(url),
+			       digestmod=hashlib.sha512)
 
 		opts = {
 			'url': url,
@@ -33,4 +40,18 @@ class Bittrex:
 		}
 		jval = jsonfetch(opts)
 		return jval['result']
+
+	def balance(self, currency):
+		callUrl = '/v1.1/account/getbalance'
+		callParams = { 'currency': currency }
+		return self.fetchPriv(callUrl, callParams)
+
+	def balances(self):
+		callUrl = '/v1.1/account/getbalances'
+		return self.fetchPriv(callUrl, {})
+
+	def ticker(self, market):
+		callUrl = '/v1.1/public/getticker'
+		callParams = { 'market': market }
+		return self.fetchPub(callUrl, callParams)
 
