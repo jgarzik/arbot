@@ -227,11 +227,11 @@ def adjustOrders(algo, location):
 	prices = getDb('chain.BTCETH.prices')
 	goalPrice = prices['pct4']
 
-	logging.info("Current " + decimalstr(curPrice) + ", Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
+	mktPrefix = 'mkt' + algo + '.' + location + ':'
+
+	logging.info(mktPrefix + "Current " + decimalstr(curPrice) + ", Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
 
 	price = min(bestPriceWithWorkers, decimaltrunc(goalPrice, 4))
-
-	mktPrefix = 'mkt' + algo + '.' + location + ':'
 
 	res = None
 	nh = Nicehash(authDb)
@@ -266,7 +266,9 @@ def adjustOrders(algo, location):
 
 	# leave order as-is
 	else:
-		logging.info(mktPrefix + "Decision: no adjustment action")
+		logging.info(mktPrefix + "Decision: no change. " +
+			     "Workers " + str(order['workers']) + ", " +
+			     "Speed " + order['accepted_speed'])
 
 def createNewOrders(algo, location):
 	# Calculate best price
@@ -280,7 +282,7 @@ def createNewOrders(algo, location):
 	prices = getDb('chain.BTCETH.prices')
 	minReqPrice = decimaltrunc(prices['pct4'], 4)
 
-	logging.info("Goal " + decimalstr(minReqPrice) + ", BWW " + str(bestPrice))
+	logging.info(mktPrefix + "Goal " + decimalstr(minReqPrice) + ", BWW " + str(bestPrice))
 
 	# Test: is there a good price on the market?
 	if bestPrice > minReqPrice:
@@ -368,6 +370,9 @@ def balanceSummary():
 
 	balance = getDb('bittrex.balances')[1]['Balance']
 	logging.info("Bittrex ETH : " + decimalstr(balance))
+
+	balance = getDb('bittrex.balances')[0]['Balance']
+	logging.info("Bittrex BTC : " + decimalstr(balance))
 
 def main():
 	readConfig()
