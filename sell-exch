@@ -1,0 +1,87 @@
+#!/usr/bin/python
+
+import pprint
+import json
+import argparse
+import logging
+import sys
+from decimal import Decimal, ROUND_FLOOR, getcontext
+from decutils import DecimalEncoder, decimalstr, decimaltrunc, jsonDumps, jsonLoads
+from bittrex import Bittrex
+
+pp = pprint.PrettyPrinter(indent=4)
+
+logFn = 'log.sell-exch'
+LOGFORMAT = "%(asctime)s %(message)s"
+logging.basicConfig(filename=logFn, level=logging.DEBUG, format=LOGFORMAT)
+
+dbFn = 'db.json'
+authDbFn = 'auth.json'
+configFn = 'config.json'
+
+parser = argparse.ArgumentParser(prog='myprogram')
+parser.add_argument('--dryrun', action='store_true', default=False,
+		    help='Do not actually create/update orders')
+args = parser.parse_args()
+
+getcontext().prec = 18
+
+syscfg = None
+authDb = None
+db = {}
+
+def getDb(key):
+	if key not in db:
+		return None
+
+	return db[key]
+
+def readConfig():
+	global authDb
+	with open(authDbFn) as data_file:
+		authDb = json.load(data_file)
+
+	global syscfg
+	with open(configFn) as data_file:
+		syscfg = json.load(data_file)
+
+def readDb():
+	global db
+	with open(dbFn) as data_file:
+		db = json.load(data_file)
+
+def trySell(eb, currency, pair):
+	balance = eb.balance('ETH')['Balance']
+	ticker = eb.ticker(pair)
+	highestBid = ticker['Bid']
+
+	logging.info("Balance " + decimalstr(balance))
+	logging.info("ticker " + jsonDumps(ticker))
+
+	if balance.is_zero():
+		logging.info("Decision:  No balance, no action")
+		return
+
+	logging.info("Decision: sell " + decimalstr(balance) + " ETH at bid " +
+		     decimalstr(highestBid))
+
+	res = eb.sell('BTC-ETH', balance, highestBid)
+	if not res:
+		logging.warning("Sell failed")
+	else:
+		logging.info("Sell succeeded: " + jsonDumps(res))
+
+def main():
+	readConfig()
+	readDb()
+
+	eb = Bittrex(authDb)
+
+	actCurrencies = [ 'ETH' ]
+	for currency in actCurrencies:
+		pair = 'BTC-' + currency
+		trySell(eb, currency, pair)
+
+if __name__ == '__main__':
+	main()
+

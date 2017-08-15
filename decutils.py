@@ -21,3 +21,6 @@ def decimaltrunc(d, n):
 def jsonDumps(obj):
 	return json.dumps(obj, cls=DecimalEncoder)
 
+def jsonLoads(s):
+	return json.loads(s, parse_float=Decimal)
+

@@ -50,6 +50,15 @@ class Bittrex:
 		callUrl = '/v1.1/account/getbalances'
 		return self.fetchPriv(callUrl, {})
 
+	def sell(self, market, qty, rate):
+		callUrl = '/v1.1/market/selllimit'
+		callParams = {
+			'market': market,
+			'quantity': qty,
+			'rate': rate,
+		}
+		return self.fetchPriv(callUrl, callParams)
+
 	def ticker(self, market):
 		callUrl = '/v1.1/public/getticker'
 		callParams = { 'market': market }
