@@ -356,6 +356,19 @@ def writeDb():
 	with open(dbFn, 'w') as outfile:
 		json.dump(db, outfile, indent=2, sort_keys=True, cls=DecimalEncoder)
 
+def balanceSummary():
+	balance = getDb('nh.balance')['balance_confirmed']
+	logging.info("Nicehash BTC: " + balance)
+
+	balance = getDb('nanopool.balance')['data']
+	logging.info("Nanopool ETH: " + decimalstr(balance))
+
+	balance = getDb('chain.ETH.balance')['ether']
+	logging.info("Chain ETH   : " + decimalstr(balance))
+
+	balance = getDb('bittrex.balances')[1]['Balance']
+	logging.info("Bittrex ETH : " + decimalstr(balance))
+
 def main():
 	readConfig()
 
@@ -370,6 +383,7 @@ def main():
 	calcPrices()
 	makeOrders()
 	writeDb()
+	balanceSummary()
 
 if __name__ == '__main__':
 	main()
