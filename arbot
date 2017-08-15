@@ -94,7 +94,7 @@ def queryData():
 
 	exchPolo = Poloniex()
 	ticker = exchPolo.ticker()
-	putDb('ticker', ticker)
+	putDb('poloniex.ticker', ticker)
 
 	nh = Nicehash(authDb)
 	balance = nh.balance()
@@ -123,9 +123,12 @@ def queryData():
 			     authDb['etherscan']['apikey'])
 	putDb('chain.ETH.balance', balance)
 
-	eb = Bittrex()
-	balances = eb.balances(authDb)
+	eb = Bittrex(authDb)
+	balances = eb.balances()
 	putDb('bittrex.balances', balances)
+
+	ticker = eb.ticker('BTC-ETH')
+	putDb('bittrex.ticker.BTC-ETH', ticker)
 
 def calcChainStats():
 	ethstats = getDb('chain.ETH.stats')
@@ -162,11 +165,11 @@ def calcChainStats():
 	putDb('chain.ETH.calc', finalcalc)
 
 def calcPrices():
-	ticker = getDb('ticker')
+	ticker = getDb('poloniex.ticker')
 	finalcalc = getDb('chain.ETH.calc')
 
 	prices = {}
-	prices['priceBTCETH'] = Decimal(ticker['BTC_ETH']['last'])
+	prices['priceBTCETH'] = Decimal(ticker['BTC_ETH']['highestBid'])
 	prices['mktBTCGH'] = finalcalc['perDay'] * prices['priceBTCETH']
 
 	startBTC = Decimal('1.0')
