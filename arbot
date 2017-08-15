@@ -19,6 +19,7 @@ from nicehash import Nicehash
 from nanopool import Nanopool
 from etherscan import Etherscan
 from bittrex import Bittrex
+from decutils import DecimalEncoder, decimalstr, decimaltrunc, jsonDumps
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -42,22 +43,6 @@ getcontext().prec = 18
 syscfg = None
 authDb = None
 db = {}
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, Decimal):
-            return float(o)
-        return super(DecimalEncoder, self).default(o)
-
-def decimalstr(d):
-	s = '{0:f}'.format(d)
-	return s
-
-def decimaltrunc(d, n):
-	s = decimalstr(d)
-	before_dec, after_dec = s.split('.')
-	truncStr = '.'.join((before_dec, after_dec[0:n]))
-	return Decimal(truncStr)
 
 def getDb(key):
 	if key not in db:
@@ -260,7 +245,7 @@ def adjustOrders(algo, location):
 
 		res = nh.orderPriceDec(algo, location, order['id'], bestPriceWithWorkers)
 		if res:
-			resStr = json.dumps(res, cls=DecimalEncoder)
+			resStr = jsonDumps(res)
 			logging.info("Order dec'd successfully: " + resStr)
 		else:
 			logging.info("Order dec failed")
@@ -274,7 +259,7 @@ def adjustOrders(algo, location):
 
 		res = nh.orderPriceInc(algo, location, order['id'], price)
 		if res:
-			resStr = json.dumps(res, cls=DecimalEncoder)
+			resStr = jsonDumps(res)
 			logging.info("Order inc'd successfully: " + resStr)
 		else:
 			logging.info("Order inc failed")
@@ -332,7 +317,7 @@ def createNewOrders(algo, location):
 	}
 
 	if args.dryrun:
-		callStr = json.dumps(callopts, cls=DecimalEncoder)
+		callStr = jsonDumps(callopts)
 		logging.info("NOT creating order - dryrun: " + callStr)
 		return
 
@@ -341,7 +326,7 @@ def createNewOrders(algo, location):
 	if not res:
 		sys.exit("Nicehash error; order create failed")
 
-	resStr = json.dumps(res, cls=DecimalEncoder)
+	resStr = jsonDumps(res)
 	logging.info("Order created successfully: " + resStr)
 
 def makeOrders():
