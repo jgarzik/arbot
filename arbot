@@ -2,9 +2,9 @@
 
 #
 # To-do...
+# - cancel orders whose price cannot be decreased rapidly
 # - truncate order price to 4 decimal places
 # - refill orders that are running low(?) - maybe natural refill
-#
 #
 
 import pprint
