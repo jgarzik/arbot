@@ -106,3 +106,18 @@ class Nicehash:
 		}
 		return nhfetchCheck(opts)
 
+	def orderRemove(self, algo, location, orderId):
+		params = {
+			'method': 'orders.remove',
+			'id': self.id,
+			'key': self.key,
+			'location': location,
+			'algo': algo,
+			'order': orderId,
+		}
+		opts = {
+			'url': self.ApiUrl,
+			'params': params,
+		}
+		return nhfetchCheck(opts)
+

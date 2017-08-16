@@ -13,13 +13,13 @@ import argparse
 import logging
 import sys
 from decimal import Decimal, ROUND_FLOOR, getcontext
-from ethchain import EthChain
+from etherchain import EtherChain
 from poloniex import Poloniex
 from nicehash import Nicehash
 from nanopool import Nanopool
-from etherscan import Etherscan
 from bittrex import Bittrex
 from decutils import DecimalEncoder, decimalstr, decimaltrunc, jsonDumps
+from ethunits import toEther
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -72,9 +72,13 @@ def getPool(currency, geoloc):
 	return None
 
 def queryData():
-	chainEth = EthChain()
+	chainEth = EtherChain()
 	stats = chainEth.basic_stats()
 	putDb('chain.ETH.stats', stats)
+
+	account = chainEth.account(authDb['nanopool']['address'])
+	balance = account['data'][0]['balance']
+	putDb('chain.ETH.balance', toEther(balance))
 
 	exchPolo = Poloniex()
 	ticker = exchPolo.ticker()
@@ -101,11 +105,6 @@ def queryData():
 	poolNano = Nanopool()
 	balance = poolNano.balance(authDb['nanopool']['address'])
 	putDb('nanopool.balance', balance)
-
-	es = Etherscan()
-	balance = es.balance(authDb['nanopool']['address'],
-			     authDb['etherscan']['apikey'])
-	putDb('chain.ETH.balance', balance)
 
 	eb = Bittrex(authDb)
 	balances = eb.balances()
@@ -239,8 +238,23 @@ def adjustOrders(algo, location):
 	res = None
 	nh = Nicehash(authDb)
 
+	# are we paying way too much?   cancel order.
+	if (curPrice > prices['breakEven']):
+		logging.info(mktPrefix + "Decision: paying way too much; cancel order")
+		if args.dryrun:
+			logging.info("NOT cancel'ing order - dryrun")
+			return
+
+		res = nh.orderRemove(algo, location, order['id'])
+		if res:
+			resStr = jsonDumps(res)
+			logging.info("Order removed successfully: " + resStr)
+		else:
+			logging.info("Order remove failed")
+
 	# are we paying too much?  reduce price.
-	if bestPriceWithWorkers < curPrice:
+	elif ((curPrice > bestPriceWithWorkers) or
+	      (curPrice > goalPrice)):
 		logging.info(mktPrefix + "Decision: paying too much; attempt to decrease price")
 		if args.dryrun:
 			logging.info("NOT dec'ing order - dryrun")
@@ -372,7 +386,7 @@ def balanceSummary():
 	balance = getDb('nanopool.balance')['data']
 	logging.info("Nanopool ETH: " + decimalstr(balance))
 
-	balance = getDb('chain.ETH.balance')['ether']
+	balance = getDb('chain.ETH.balance')
 	logging.info("Chain ETH   : " + decimalstr(balance))
 
 	balance = getDb('bittrex.balances')[1]['Balance']
