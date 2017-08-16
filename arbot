@@ -178,7 +178,10 @@ def calcPrices():
 	prices['pct3'] = prices['breakEven'] * Decimal('0.97')
 	prices['pct4'] = prices['breakEven'] * Decimal('0.96')
 	prices['pct5'] = prices['breakEven'] * Decimal('0.95')
+	prices['pct6'] = prices['breakEven'] * Decimal('0.94')
 	prices['pct10'] = prices['breakEven'] * Decimal('0.90')
+
+	prices['pctTarget'] = prices['pct6']
 
 	putDb('chain.BTCETH.prices', prices)
 
@@ -225,7 +228,7 @@ def adjustOrders(algo, location):
 	curPrice = Decimal(order['price'])
 	bestPriceWithWorkers = findBestPrice(algo, location)
 	prices = getDb('chain.BTCETH.prices')
-	goalPrice = prices['pct4']
+	goalPrice = prices['pctTarget']
 
 	mktPrefix = 'mkt' + algo + '.' + location + ':'
 
@@ -280,7 +283,7 @@ def createNewOrders(algo, location):
 
 	# Get previously calculated prices and bid boundaries
 	prices = getDb('chain.BTCETH.prices')
-	minReqPrice = decimaltrunc(prices['pct4'], 4)
+	minReqPrice = decimaltrunc(prices['pctTarget'], 4)
 
 	logging.info(mktPrefix + "Goal " + decimalstr(minReqPrice) + ", BWW " + str(bestPrice))
 
@@ -360,7 +363,11 @@ def writeDb():
 
 def balanceSummary():
 	balance = getDb('nh.balance')['balance_confirmed']
-	logging.info("Nicehash BTC: " + balance)
+	pending = getDb('nh.balance')['balance_pending']
+	logStr = "Nicehash BTC: " + balance
+	if not Decimal(pending).is_zero():
+		logStr += ' (' + pending + ' pending)'
+	logging.info(logStr)
 
 	balance = getDb('nanopool.balance')['data']
 	logging.info("Nanopool ETH: " + decimalstr(balance))
