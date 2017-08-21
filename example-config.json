@@ -1,0 +1,29 @@
+{
+	"nicehash": {
+		"minOrderBalance": "0.01",
+		"newOrderSpend": "0.05",
+		"algoList" : [
+			"20"
+		]
+	},
+	"pools": {
+		"nanopool": {
+			"name": "nanopool",
+			"user": "0x0000000000000000000000000000000000000000.NH/person@example.com",
+			"pass": "x",
+			"speed_limit": 400,
+		  	"endpoints": [
+				{ "currency": "ETH",
+				  "geoloc": "US",
+				  "host": "eth-us-east1.nanopool.org",
+				  "port": 9999
+				},
+				{ "currency": "ETH",
+				  "geoloc": "EU",
+				  "host": "eth-eu1.nanopool.org",
+				  "port": 9999
+				}
+		  	]
+		}
+	}
+}

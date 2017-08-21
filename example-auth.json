@@ -1,0 +1,17 @@
+{
+	"nicehash": {
+		"id": "111111",
+		"key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	},
+	"nanopool": {
+		"address": "0x0000000000000000000000000000000000000000",
+		"email": "person@example.com"
+	},
+	"bittrex": {
+		"key":"33333333333333333333333333333333",
+		"secret":"00000000000000000000000000000000"
+	},
+	"etherscan": {
+		"apikey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+	}
+}
