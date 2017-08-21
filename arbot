@@ -231,7 +231,11 @@ def adjustOrders(algo, location):
 
 	mktPrefix = 'mkt' + algo + '.' + location + ':'
 
-	logging.info(mktPrefix + "Current " + decimalstr(curPrice) + ", Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
+	logging.info(mktPrefix +
+		     "Current price: " + decimalstr(curPrice) + ", " +
+		     "Workers " + str(order['workers']) + ", " +
+		     "Speed " + order['accepted_speed'])
+	logging.info(mktPrefix + "Goal " + decimalstr(goalPrice) + ", BWW " + str(bestPriceWithWorkers))
 
 	price = min(bestPriceWithWorkers, decimaltrunc(goalPrice, 4))
 
@@ -283,9 +287,7 @@ def adjustOrders(algo, location):
 
 	# leave order as-is
 	else:
-		logging.info(mktPrefix + "Decision: no change. " +
-			     "Workers " + str(order['workers']) + ", " +
-			     "Speed " + order['accepted_speed'])
+		logging.info(mktPrefix + "Decision: no change.")
 
 def createNewOrders(algo, location):
 	# Calculate best price
@@ -390,10 +392,15 @@ def balanceSummary():
 	logging.info("Chain ETH   : " + decimalstr(balance))
 
 	balance = getDb('bittrex.balances')[1]['Balance']
-	logging.info("Bittrex ETH : " + decimalstr(balance))
+	pending = getDb('bittrex.balances')[1]['Pending']
+	logStr = "Bittrex ETH : " + decimalstr(balance)
+	if pending > 0:
+		logStr += " (" + str(pending) + " pending)"
+	logging.info(logStr)
 
 	balance = getDb('bittrex.balances')[0]['Balance']
-	logging.info("Bittrex BTC : " + decimalstr(balance))
+	logStr = "Bittrex BTC : " + decimalstr(balance)
+	logging.info(logStr)
 
 def main():
 	readConfig()
